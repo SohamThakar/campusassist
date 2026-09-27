@@ -1,0 +1,70 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: campus_ai_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-campus_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-campus_secure_password_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-campus_ai}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-campus_user} -d ${POSTGRES_DB:-campus_ai}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - campus_network
+    # PostgreSQL is deliberately NOT exposed to the public internet for security
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: campus_ai_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-campus_user}:${POSTGRES_PASSWORD:-campus_secure_password_2026}@postgres:5432/${POSTGRES_DB:-campus_ai}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      JWT_SECRET: ${JWT_SECRET:-supersecret_campusassist_jwt_key_2026_change_in_production}
+      ENVIRONMENT: production
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,https://localhost}
+      UPLOAD_DIR: /app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/app/uploads
+    networks:
+      - campus_network
+    # Backend port 8000 is internal only; Nginx reverse proxy routes all /api and /ws traffic
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: campus_ai_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      # Uncomment after mounting SSL certificates for HTTPS:
+      # - "443:443"
+    depends_on:
+      - backend
+    volumes:
+      - uploads_data:/usr/share/nginx/html/uploads:ro
+    networks:
+      - campus_network
+
+volumes:
+  pgdata:
+    name: campus_ai_pgdata
+  uploads_data:
+    name: campus_ai_uploads_data
+
+networks:
+  campus_network:
+    name: campus_ai_network
+    driver: bridge
