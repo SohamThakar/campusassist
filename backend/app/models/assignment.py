@@ -20,7 +20,11 @@ class Assignment(Base):
     assigned_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     accepted_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
-    status = Column(SQLEnum(AssignmentStatus), default=AssignmentStatus.PENDING, nullable=False)
+    status = Column(
+        SQLEnum(AssignmentStatus, values_callable=lambda x: [e.value for e in x]),
+        default=AssignmentStatus.PENDING,
+        nullable=False
+    )
 
     # Relationships
     complaint = relationship("Complaint", back_populates="assignments", lazy="selectin")

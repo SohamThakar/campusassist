@@ -40,7 +40,12 @@ class Complaint(Base):
     video_filename = Column(String(255), nullable=True)
     category = Column(String(50), nullable=False, default=ComplaintCategory.OTHER)
     priority = Column(String(50), nullable=False, default=ComplaintPriority.MEDIUM)
-    status = Column(SQLEnum(ComplaintStatus), default=ComplaintStatus.SUBMITTED, nullable=False, index=True)
+    status = Column(
+        SQLEnum(ComplaintStatus, values_callable=lambda x: [e.value for e in x]),
+        default=ComplaintStatus.SUBMITTED,
+        nullable=False,
+        index=True
+    )
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
     submitted_by_contact = Column(String(100), nullable=True)
