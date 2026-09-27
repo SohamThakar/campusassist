@@ -5,9 +5,11 @@ const baseURL = rawApiUrl ? `${rawApiUrl.replace(/\/+$/, '')}/api/v1` : '/api/v1
 
 const api = axios.create({
   baseURL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  // Do NOT set a default Content-Type here.
+  // Axios auto-sets 'application/json' for plain objects and
+  // 'multipart/form-data; boundary=...' for FormData.
+  // A default 'application/json' here overrides FormData detection
+  // and breaks multipart file uploads (causes FastAPI 422).
 });
 
 /**
