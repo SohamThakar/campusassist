@@ -12,6 +12,7 @@ import {
   Layers
 } from 'lucide-react';
 import { complaintsAPI, techniciansAPI, assignmentsAPI } from '../../api/endpoints';
+import { getUploadUrl } from '../../api/client';
 import { Navbar } from '../../components/common/Navbar';
 import { Sidebar } from '../../components/common/Sidebar';
 import { StatusBadge } from '../../components/common/StatusBadge';
@@ -364,7 +365,7 @@ export const MaintenanceDetailPage = () => {
                 {complaint.photo_url ? (
                   <div className="relative group overflow-hidden rounded-xl border border-slate-200 bg-slate-100 max-h-80">
                     <img
-                      src={complaint.photo_url}
+                      src={getUploadUrl(complaint.photo_url)}
                       alt="Complaint Photo Evidence"
                       className="w-full h-full object-cover rounded-xl transition-transform duration-300 group-hover:scale-105"
                     />
@@ -389,7 +390,7 @@ export const MaintenanceDetailPage = () => {
                       className="w-full max-h-80"
                       preload="metadata"
                     >
-                      <source src={complaint.video_url} />
+                      <source src={getUploadUrl(complaint.video_url)} />
                       Your browser does not support video playback.
                     </video>
                     <div className="bg-white px-4 py-2 flex items-center gap-2">
@@ -397,7 +398,7 @@ export const MaintenanceDetailPage = () => {
                         🎬 {complaint.video_filename || 'Video Evidence'}
                       </span>
                       <a
-                        href={complaint.video_url}
+                        href={getUploadUrl(complaint.video_url)}
                         target="_blank"
                         rel="noreferrer"
                         className="ml-auto text-[10px] font-semibold text-[#0f6fb0] hover:underline shrink-0"

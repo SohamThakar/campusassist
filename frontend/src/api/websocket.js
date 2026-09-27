@@ -7,10 +7,27 @@
  */
 export const getWebSocketUrl = (userId) => {
   if (!userId) return null;
-  const isSecure = window.location.protocol === 'https:';
-  const protocol = isSecure ? 'wss:' : 'ws:';
-  const host = window.location.host;
-  return `${protocol}//${host}/ws/${encodeURIComponent(userId)}`;
+
+  const rawApiUrl = import.meta.env.VITE_API_URL;
+  if (!rawApiUrl) {
+    // In local development fallback to window.location.host if VITE_API_URL is omitted
+    if (import.meta.env.DEV && typeof window !== 'undefined' && window.location) {
+      const isSecure = window.location.protocol === 'https:';
+      const protocol = isSecure ? 'wss:' : 'ws:';
+      return `${protocol}//${window.location.host}/ws/${encodeURIComponent(userId)}`;
+    }
+    console.error('VITE_API_URL is missing. Unable to construct WebSocket URL.');
+    return null;
+  }
+
+  try {
+    const url = new URL(rawApiUrl);
+    const protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${url.host}/ws/${encodeURIComponent(userId)}`;
+  } catch (err) {
+    console.error('Invalid VITE_API_URL provided for WebSocket URL generation:', rawApiUrl, err);
+    return null;
+  }
 };
 
 /**

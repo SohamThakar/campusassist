@@ -9,6 +9,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { assignmentsAPI } from '../../api/endpoints';
+import { getUploadUrl } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { Navbar } from '../../components/common/Navbar';
 import { Sidebar } from '../../components/common/Sidebar';
@@ -212,7 +213,7 @@ export const ProviderDashboardPage = () => {
                         {/* Photo Evidence if any */}
                         {comp?.photo_url && (
                           <div className="mb-3 rounded-lg overflow-hidden border border-slate-200 max-h-32">
-                            <img src={comp.photo_url} alt="Evidence" className="w-full h-28 object-cover" />
+                            <img src={getUploadUrl(comp.photo_url)} alt="Evidence" className="w-full h-28 object-cover" />
                           </div>
                         )}
                       </div>
@@ -275,7 +276,7 @@ export const ProviderDashboardPage = () => {
                       </div>
                       {assign.complaint?.photo_url && (
                         <div className="mb-3 rounded-lg overflow-hidden border border-slate-200 max-h-32">
-                          <img src={assign.complaint.photo_url} alt="Evidence" className="w-full h-28 object-cover" />
+                          <img src={getUploadUrl(assign.complaint.photo_url)} alt="Evidence" className="w-full h-28 object-cover" />
                         </div>
                       )}
                     </div>

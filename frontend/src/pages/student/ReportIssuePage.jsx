@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { complaintsAPI } from '../../api/endpoints';
+import { getUploadUrl } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 
 const CATEGORIES = [
@@ -438,7 +439,7 @@ export const ReportIssuePage = () => {
                   {photoUrl ? (
                     <div className="relative rounded-xl border border-slate-200 bg-slate-50 p-2.5 flex items-center gap-3">
                       <img
-                        src={photoUrl}
+                        src={getUploadUrl(photoUrl)}
                         alt="Evidence"
                         className="h-14 w-14 rounded-lg object-cover border border-slate-200 shrink-0"
                       />

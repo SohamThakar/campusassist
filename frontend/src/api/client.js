@@ -1,11 +1,32 @@
 import axios from 'axios';
 
+const rawApiUrl = import.meta.env.VITE_API_URL;
+const baseURL = rawApiUrl ? `${rawApiUrl.replace(/\/+$/, '')}/api/v1` : '/api/v1';
+
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+/**
+ * Resolves uploaded media URLs (photos, videos) using backend origin if relative.
+ */
+export const getUploadUrl = (path) => {
+  if (!path) return '';
+  if (
+    path.startsWith('http://') ||
+    path.startsWith('https://') ||
+    path.startsWith('blob:') ||
+    path.startsWith('data:')
+  ) {
+    return path;
+  }
+  const backendOrigin = rawApiUrl ? rawApiUrl.replace(/\/+$/, '') : '';
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${backendOrigin}${cleanPath}`;
+};
 
 // Intercept requests to attach JWT bearer token if present
 api.interceptors.request.use(
