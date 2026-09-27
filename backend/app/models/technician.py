@@ -17,7 +17,11 @@ class Technician(Base):
     skills = Column(JSON, default=list, nullable=False)  # e.g. ["Plumbing", "HVAC"]
     service_area = Column(String(100), default="Main Campus", nullable=False)
     availability = Column(JSON, default=dict, nullable=False) # e.g. {"mon": "9am-5pm", "status": "available"}
-    status = Column(SQLEnum(TechnicianStatus), default=TechnicianStatus.VERIFIED, nullable=False)
+    status = Column(
+        SQLEnum(TechnicianStatus, values_callable=lambda x: [e.value for e in x]),
+        default=TechnicianStatus.VERIFIED,
+        nullable=False
+    )
     rating = Column(Float, default=4.8, nullable=False)
     current_workload = Column(Integer, default=0, nullable=False)
 

@@ -1,4 +1,4 @@
-﻿"""fix_enum_values_ensure_lowercase
+"""fix_enum_values_ensure_lowercase
 
 Root cause fix for:
   asyncpg.exceptions.InvalidTextRepresentationError:
@@ -51,6 +51,11 @@ def upgrade() -> None:
     op.execute("ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'authority'")
     op.execute("ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'provider'")
     op.execute("ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'principal'")
+
+    # technicianstatus enum - ensure all 3 lowercase values exist.
+    op.execute("ALTER TYPE technicianstatus ADD VALUE IF NOT EXISTS 'pending'")
+    op.execute("ALTER TYPE technicianstatus ADD VALUE IF NOT EXISTS 'verified'")
+    op.execute("ALTER TYPE technicianstatus ADD VALUE IF NOT EXISTS 'suspended'")
 
 
 def downgrade() -> None:
