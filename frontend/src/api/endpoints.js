@@ -9,12 +9,8 @@ export const complaintsAPI = {
   submit: (data) => api.post('/complaints', data),
   getById: (id) => api.get(`/complaints/${encodeURIComponent(id)}`),
   list: (params) => api.get('/complaints', { params }),
-  uploadPhoto: (formData) => api.post('/complaints/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
-  uploadVideo: (formData) => api.post('/complaints/upload-video', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
+  uploadPhoto: (formData) => api.post('/complaints/upload', formData),
+  uploadVideo: (formData) => api.post('/complaints/upload-video', formData),
   approve: (id, data) => api.post(`/complaints/${encodeURIComponent(id)}/approve`, data),
   reject: (id, data) => api.post(`/complaints/${encodeURIComponent(id)}/reject`, data),
   reassign: (id, data) => api.post(`/complaints/${encodeURIComponent(id)}/reassign`, data),
