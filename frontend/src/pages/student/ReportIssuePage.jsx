@@ -21,6 +21,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { complaintsAPI } from '../../api/endpoints';
 import { getUploadUrl } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import { compressImageIfNeeded } from '../../utils/imageCompressor';
 
 const CATEGORIES = [
   "Electrical",
@@ -85,22 +86,27 @@ export const ReportIssuePage = () => {
   }, [user]);
 
   const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Photo exceeds 5MB limit. Please choose a smaller photo.');
-      return;
-    }
-
-    setPhotoFile(file);
     setError('');
     setIsUploading(true);
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
+      // Auto-compress high-resolution mobile photos (>2MB) down to ~500-800KB
+      const file = await compressImageIfNeeded(rawFile);
+
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Photo exceeds 5MB limit even after optimization. Please choose a smaller photo.');
+        setIsUploading(false);
+        return;
+      }
+
+      setPhotoFile(file);
+
+      const formData = new FormData();
+      formData.append('file', file);
+
       const res = await complaintsAPI.uploadPhoto(formData);
       setPhotoUrl(res.data.photo_url);
     } catch (err) {
@@ -466,7 +472,7 @@ export const ReportIssuePage = () => {
                       {isUploading ? (
                         <div className="flex items-center gap-2 text-slate-600 py-1">
                           <Loader2 className="h-4 w-4 animate-spin text-[#0f6fb0]" />
-                          <span className="text-xs font-medium">Uploading photo...</span>
+                          <span className="text-xs font-medium">Optimizing & uploading photo...</span>
                         </div>
                       ) : (
                         <>
@@ -475,7 +481,7 @@ export const ReportIssuePage = () => {
                             <span className="text-xs font-bold text-slate-800">Take Photo or Browse</span>
                           </div>
                           <p className="text-[10px] text-slate-400">
-                            Max 5MB (JPG, PNG, WEBP)
+                            Max 5MB • Mobile photos auto-optimized
                           </p>
                         </>
                       )}
