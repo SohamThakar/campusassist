@@ -7,10 +7,11 @@ export const HomePage = () => {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
 
-  // If accessed via QR code with location query params (?location=..., ?loc=...),
+  // If accessed via QR code with location query params (?location=..., ?loc=...) or ?portal=student,
   // immediately redirect to the student complaint portal with location prefilled.
   const locationParam = searchParams.get('location') || searchParams.get('loc') || searchParams.get('place') || searchParams.get('zone');
-  if (locationParam) {
+  const studentParam = searchParams.get('portal') === 'student' || searchParams.get('student') || searchParams.get('qr');
+  if (locationParam || studentParam) {
     return <Navigate to={`/student?${searchParams.toString()}`} replace />;
   }
 

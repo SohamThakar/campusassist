@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
-import { QrCode, Download, Printer, Copy, Check, X, ExternalLink, Sparkles } from 'lucide-react';
+import { QrCode, Download, Printer, Copy, Check, X, ExternalLink, Sparkles, Smartphone, Monitor } from 'lucide-react';
 
 /**
  * Robust Client-Side QR Code Generator Modal
  * Generates high-resolution QR codes entirely in the browser using the 'qrcode' library.
- * Works offline and across all environments (localhost, Render, VPS, or custom domain).
+ * Routes through root /?location=... so Render Static Site serves index.html (200 OK)
+ * without 404 Not Found, and HomePage smoothly forwards to /student with pre-filled location!
  */
 export const QRCodeGeneratorModal = ({ 
   isOpen, 
@@ -19,6 +20,14 @@ export const QRCodeGeneratorModal = ({
   const [customBaseUrl, setCustomBaseUrl] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // Check if testing locally on computer
+  const isLocal = typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const productionOrigin = 'https://campusassist-frontend.onrender.com';
+  
+  // Target environment mode: 'live' (for phone cameras scanning screen) or 'local' (for PC browser test)
+  const [targetMode, setTargetMode] = useState(isLocal ? 'live' : 'auto');
+
   // Sync locationName whenever initialLocation changes or modal opens
   useEffect(() => {
     if (initialLocation) {
@@ -28,15 +37,24 @@ export const QRCodeGeneratorModal = ({
     }
   }, [initialLocation, isOpen]);
 
-  // Determine current origin or allow user override
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const activeBaseUrl = (customBaseUrl.trim() || origin).replace(/\/+$/, '');
+  // Determine active base origin
+  const localOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+  let activeBase = productionOrigin;
+  if (customBaseUrl.trim()) {
+    activeBase = customBaseUrl.trim().replace(/\/+$/, '');
+  } else if (!isLocal || targetMode === 'local') {
+    activeBase = localOrigin;
+  } else {
+    activeBase = productionOrigin;
+  }
 
-  // The destination URL where users report an issue for this location
+  // CRITICAL: We route via /?location=... instead of /student?location=...
+  // Render Static Sites serve /index.html on root path with 200 OK, avoiding 404 Not Found!
+  // HomePage.jsx immediately redirects client-side to /student?location=... with prefilled data!
   const cleanLoc = locationName.trim();
   const qrUrl = cleanLoc
-    ? `${activeBaseUrl}/student?location=${encodeURIComponent(cleanLoc)}`
-    : `${activeBaseUrl}/student`;
+    ? `${activeBase}/?location=${encodeURIComponent(cleanLoc)}`
+    : `${activeBase}/?portal=student`;
 
   // Generate QR Code data URL client-side whenever qrUrl changes
   useEffect(() => {
@@ -277,8 +295,37 @@ export const QRCodeGeneratorModal = ({
           </div>
         </div>
 
+        {/* Localhost vs Mobile Scanning Destination Switcher (if on localhost) */}
+        {isLocal && (
+          <div className="mt-3 flex items-center justify-between p-2 bg-sky-50/70 border border-sky-200/60 rounded-xl text-xs">
+            <span className="text-[11px] font-semibold text-sky-900">QR Target Mode:</span>
+            <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-sky-200">
+              <button
+                type="button"
+                onClick={() => setTargetMode('live')}
+                className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all ${
+                  targetMode === 'live' ? 'bg-[#0f6fb0] text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-50'
+                }`}
+                title="Use Live Render deployment so your phone can reach the URL"
+              >
+                <Smartphone className="h-3 w-3" /> Phone Camera (Live Render)
+              </button>
+              <button
+                type="button"
+                onClick={() => setTargetMode('local')}
+                className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all ${
+                  targetMode === 'local' ? 'bg-[#0f6fb0] text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-50'
+                }`}
+                title="Use localhost for testing directly on this PC"
+              >
+                <Monitor className="h-3 w-3" /> This PC (Localhost)
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* QR Preview Card */}
-        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-center">
+        <div className="mt-3.5 rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-center">
           <div className="inline-block bg-white p-3 rounded-2xl border border-slate-200 shadow-sm mb-2">
             {qrDataUrl ? (
               <img
@@ -324,7 +371,7 @@ export const QRCodeGeneratorModal = ({
           {showAdvanced && (
             <div className="mt-2 p-2.5 bg-slate-100/80 rounded-xl border border-slate-200 text-left">
               <label className="block text-[10px] font-semibold text-slate-600 mb-1">
-                Base URL (defaults to current: {origin})
+                Base URL (defaults to: {activeBase})
               </label>
               <input
                 type="text"
