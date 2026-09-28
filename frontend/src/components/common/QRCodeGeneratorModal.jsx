@@ -127,51 +127,82 @@ export const QRCodeGeneratorModal = ({
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Smart Campus QR Sign - ${locationName || 'Campus Location'}</title>
+          <title>Smart Campus QR Sign - ${cleanLoc || 'Campus Location'}</title>
           <style>
             @page {
               size: A4 portrait;
-              margin: 20mm;
+              margin: 15mm;
+            }
+            * {
+              box-sizing: border-box;
             }
             body {
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-              text-align: center;
+              margin: 0;
               padding: 24px;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+              background: #f8fafc;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              min-height: 100vh;
               color: #0f172a;
-              background: #ffffff;
             }
-            .card {
+            .poster {
+              width: 100%;
               max-width: 520px;
-              margin: 0 auto;
-              border: 3px solid #0f6fb0;
+              background: #ffffff;
+              border: 3.5px solid #0f6fb0;
               border-radius: 28px;
-              padding: 40px 32px;
-              box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+              padding: 38px 32px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              text-align: center;
+              box-shadow: 0 10px 30px rgba(15, 111, 176, 0.08);
             }
             .header-tag {
               display: inline-block;
               background: #0f6fb0;
               color: #ffffff;
-              padding: 6px 16px;
-              border-radius: 999px;
-              font-size: 13px;
-              font-weight: 700;
+              padding: 6px 18px;
+              border-radius: 9999px;
+              font-size: 12px;
+              font-weight: 800;
               text-transform: uppercase;
-              letter-spacing: 0.05em;
+              letter-spacing: 0.08em;
               margin-bottom: 12px;
             }
-            h1 { font-size: 28px; font-weight: 900; margin: 0 0 6px; color: #0f172a; }
-            h2 { font-size: 16px; font-weight: 600; color: #64748b; margin: 0 0 24px; }
-            .loc-badge {
-              display: inline-block;
+            h1 {
+              font-size: 30px;
+              font-weight: 900;
+              margin: 0 0 4px 0;
+              color: #0f172a;
+              letter-spacing: -0.02em;
+            }
+            .subtitle {
+              font-size: 15px;
+              font-weight: 600;
+              color: #64748b;
+              margin: 0 0 20px 0;
+            }
+            .location-container {
+              width: 100%;
+              display: flex;
+              justify-content: center;
+              margin-bottom: 22px;
+            }
+            .location-pill {
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
               background: #f0f9ff;
-              border: 1.5px solid #bae6fd;
+              border: 2px solid #bae6fd;
               color: #0369a1;
-              padding: 10px 20px;
-              border-radius: 999px;
+              padding: 10px 24px;
+              border-radius: 9999px;
               font-weight: 800;
               font-size: 16px;
-              margin-bottom: 24px;
+              box-shadow: 0 2px 6px rgba(3, 105, 161, 0.08);
               word-break: break-word;
             }
             .qr-wrapper {
@@ -179,47 +210,111 @@ export const QRCodeGeneratorModal = ({
               border: 2px solid #e2e8f0;
               border-radius: 20px;
               padding: 16px;
-              display: inline-block;
-              margin-bottom: 20px;
+              margin: 0 auto 20px auto;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
             }
             .qr-wrapper img {
-              width: 260px;
-              height: 260px;
+              width: 250px;
+              height: 250px;
               display: block;
             }
             .instruction {
               font-size: 14px;
-              font-weight: 700;
+              font-weight: 800;
               color: #0f172a;
-              margin: 0 0 6px;
+              margin: 0 0 4px 0;
             }
             .subtext {
               font-size: 12px;
               color: #64748b;
-              margin: 0;
+              margin: 0 0 18px 0;
+            }
+            .steps-grid {
+              display: flex;
+              width: 100%;
+              justify-content: space-between;
+              gap: 10px;
+              margin-bottom: 20px;
+              padding: 12px;
+              background: #f8fafc;
+              border-radius: 14px;
+              border: 1px solid #e2e8f0;
+            }
+            .step-item {
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              text-align: center;
+            }
+            .step-num {
+              width: 22px;
+              height: 22px;
+              border-radius: 50%;
+              background: #0f6fb0;
+              color: #ffffff;
+              font-size: 11px;
+              font-weight: 800;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              margin-bottom: 4px;
+            }
+            .step-text {
+              font-size: 11px;
+              font-weight: 700;
+              color: #334155;
             }
             .footer {
-              margin-top: 24px;
-              padding-top: 16px;
+              width: 100%;
+              padding-top: 14px;
               border-top: 1px dashed #cbd5e1;
               font-size: 11px;
               color: #94a3b8;
+              font-weight: 600;
+              display: flex;
+              justify-content: space-between;
             }
           </style>
         </head>
         <body>
-          <div class="card">
+          <div class="poster">
             <span class="header-tag">Facility Maintenance</span>
             <h1>Smart Campus</h1>
-            <h2>Instant Issue Reporting Portal</h2>
-            <div class="loc-badge">📍 ${locationName || 'Campus Facility'}</div>
+            <div class="subtitle">Instant Issue Reporting Portal</div>
+            
+            <div class="location-container">
+              <div class="location-pill">📍 ${cleanLoc || 'Campus Facility'}</div>
+            </div>
+
             <div class="qr-wrapper">
               <img src="${qrDataUrl}" alt="Campus QR Code" />
             </div>
-            <p class="instruction">Scan with your phone camera to report an issue here</p>
-            <p class="subtext">No login required for students • Fast dispatch to verified technicians</p>
+
+            <div class="instruction">Scan with your phone camera to report an issue here</div>
+            <div class="subtext">No login required for students • Direct dispatch to campus technicians</div>
+
+            <div class="steps-grid">
+              <div class="step-item">
+                <div class="step-num">1</div>
+                <div class="step-text">Scan QR Code</div>
+              </div>
+              <div class="step-item">
+                <div class="step-num">2</div>
+                <div class="step-text">Upload Photo</div>
+              </div>
+              <div class="step-item">
+                <div class="step-num">3</div>
+                <div class="step-text">Tech Assigned</div>
+              </div>
+            </div>
+
             <div class="footer">
-              Smart Campus Management System • Facility Code Verified
+              <span>Smart Campus Infrastructure System</span>
+              <span>Verified Location Sign</span>
             </div>
           </div>
           <script>
@@ -325,13 +420,13 @@ export const QRCodeGeneratorModal = ({
         )}
 
         {/* QR Preview Card */}
-        <div className="mt-3.5 rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-center">
-          <div className="inline-block bg-white p-3 rounded-2xl border border-slate-200 shadow-sm mb-2">
+        <div className="mt-3.5 rounded-xl border border-slate-200 bg-slate-50/80 p-4 flex flex-col items-center justify-center text-center">
+          <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm mb-2 flex items-center justify-center">
             {qrDataUrl ? (
               <img
                 src={qrDataUrl}
                 alt={`QR Code for ${locationName}`}
-                className="h-44 w-44 object-contain mx-auto"
+                className="h-44 w-44 object-contain block"
               />
             ) : (
               <div className="h-44 w-44 flex items-center justify-center text-xs text-slate-400">
@@ -339,9 +434,10 @@ export const QRCodeGeneratorModal = ({
               </div>
             )}
           </div>
-          <p className="text-xs font-bold text-slate-900 truncate px-4">
-            {cleanLoc || 'Unspecified Location'}
-          </p>
+          <div className="inline-flex items-center gap-1.5 bg-sky-50 border border-sky-200 px-3 py-1 rounded-full text-xs font-bold text-sky-950 max-w-full truncate shadow-2xs">
+            <span>📍</span>
+            <span className="truncate">{cleanLoc || 'Unspecified Location'}</span>
+          </div>
 
           <div className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
             <span className="truncate max-w-[280px] font-mono text-[10px] bg-slate-200/70 px-2 py-0.5 rounded text-slate-700">
