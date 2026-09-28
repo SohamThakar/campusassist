@@ -26,6 +26,12 @@ export const FacilitiesOverviewPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [selectedQrLocation, setSelectedQrLocation] = useState('');
+
+  const handleOpenQrForLocation = (location) => {
+    setSelectedQrLocation(location || '');
+    setIsQrModalOpen(true);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -71,7 +77,7 @@ export const FacilitiesOverviewPage = () => {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setIsQrModalOpen(true)}
+                onClick={() => handleOpenQrForLocation('')}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 px-3.5 py-2 text-xs font-bold text-slate-700 shadow-xs transition-all"
               >
                 <QrCode className="h-3.5 w-3.5 text-[#0f6fb0]" /> Generate Location QR
@@ -193,7 +199,20 @@ export const FacilitiesOverviewPage = () => {
                         {item.description}
                       </td>
                       <td className="py-3 px-4 text-slate-600 whitespace-nowrap">
-                        📍 {item.location}
+                        <div className="flex items-center gap-2">
+                          <span>📍 {item.location}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenQrForLocation(item.location);
+                            }}
+                            className="inline-flex items-center gap-1 rounded-md bg-sky-50 hover:bg-sky-100 text-[#0f6fb0] border border-sky-200/80 px-1.5 py-0.5 text-[10px] font-bold transition-all shadow-2xs"
+                            title={`Generate QR Code for ${item.location}`}
+                          >
+                            <QrCode className="h-3 w-3" /> QR
+                          </button>
+                        </div>
                       </td>
                       <td className="py-3 px-3 whitespace-nowrap">
                         <StatusBadge status={item.status} size="sm" />
@@ -217,7 +236,12 @@ export const FacilitiesOverviewPage = () => {
 
       <QRCodeGeneratorModal
         isOpen={isQrModalOpen}
-        onClose={() => setIsQrModalOpen(false)}
+        onClose={() => {
+          setIsQrModalOpen(false);
+          setSelectedQrLocation('');
+        }}
+        initialLocation={selectedQrLocation}
+        availableLocations={Array.from(new Set(complaints.map((c) => c.location).filter(Boolean)))}
       />
     </div>
   );

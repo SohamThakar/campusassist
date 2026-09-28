@@ -9,7 +9,8 @@ import {
   Trash2,
   Wrench,
   Clock,
-  Layers
+  Layers,
+  QrCode
 } from 'lucide-react';
 import { complaintsAPI, techniciansAPI, assignmentsAPI } from '../../api/endpoints';
 import { getUploadUrl } from '../../api/client';
@@ -17,6 +18,7 @@ import { Navbar } from '../../components/common/Navbar';
 import { Sidebar } from '../../components/common/Sidebar';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
+import { QRCodeGeneratorModal } from '../../components/common/QRCodeGeneratorModal';
 
 export const MaintenanceDetailPage = () => {
   const { id } = useParams();
@@ -40,6 +42,9 @@ export const MaintenanceDetailPage = () => {
 
   // Master Issue State
   const [masterIssueData, setMasterIssueData] = useState(null);
+
+  // QR Modal State
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -232,7 +237,17 @@ export const MaintenanceDetailPage = () => {
                   </div>
                   <div>
                     <span className="text-[10px] uppercase font-bold text-slate-400 block">Location</span>
-                    <span className="text-xs font-bold text-slate-800">{complaint.location}</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs font-bold text-slate-800">{complaint.location}</span>
+                      <button
+                        type="button"
+                        onClick={() => setIsQrModalOpen(true)}
+                        className="inline-flex items-center gap-1 rounded-md bg-sky-50 hover:bg-sky-100 text-[#0f6fb0] border border-sky-200/80 px-2 py-0.5 text-[10px] font-bold transition-all"
+                        title="Generate QR code for this specific location"
+                      >
+                        <QrCode className="h-3 w-3" /> Get QR Code
+                      </button>
+                    </div>
                   </div>
                   <div>
                     <span className="text-[10px] uppercase font-bold text-slate-400 block">Date Submitted</span>
@@ -626,6 +641,12 @@ export const MaintenanceDetailPage = () => {
           </div>
         </div>
       </Modal>
+
+      <QRCodeGeneratorModal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+        initialLocation={complaint.location}
+      />
     </div>
   );
 };

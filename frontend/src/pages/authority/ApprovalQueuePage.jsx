@@ -4,7 +4,8 @@ import {
   ChevronRight, 
   ClipboardList,
   Layers,
-  Trash2
+  Trash2,
+  QrCode
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { complaintsAPI, analyticsAPI } from '../../api/endpoints';
@@ -12,6 +13,7 @@ import { Navbar } from '../../components/common/Navbar';
 import { Sidebar } from '../../components/common/Sidebar';
 import { StatCard } from '../../components/common/StatCard';
 import { StatusBadge } from '../../components/common/StatusBadge';
+import { QRCodeGeneratorModal } from '../../components/common/QRCodeGeneratorModal';
 
 export const ApprovalQueuePage = () => {
   const navigate = useNavigate();
@@ -23,6 +25,8 @@ export const ApprovalQueuePage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [deleteFilter, setDeleteFilter] = useState('pending');
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [selectedQrLocation, setSelectedQrLocation] = useState('');
 
   const fetchData = async () => {
     setLoading(true);
@@ -251,8 +255,20 @@ export const ApprovalQueuePage = () => {
                           <div className="font-semibold text-slate-900 truncate">
                             {item.description}
                           </div>
-                          <div className="text-[11px] text-slate-500 mt-0.5 truncate">
-                            📍 {item.location}
+                          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mt-0.5 truncate">
+                            <span>📍 {item.location}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedQrLocation(item.location);
+                                setIsQrModalOpen(true);
+                              }}
+                              className="inline-flex items-center gap-1 rounded bg-sky-50 hover:bg-sky-100 text-[#0f6fb0] border border-sky-200/80 px-1.5 py-0.5 text-[10px] font-bold transition-all ml-1 shrink-0"
+                              title={`Generate QR Code for ${item.location}`}
+                            >
+                              <QrCode className="h-3 w-3" /> QR
+                            </button>
                           </div>
                         </td>
 
@@ -286,6 +302,16 @@ export const ApprovalQueuePage = () => {
           </div>
         </main>
       </div>
+
+      <QRCodeGeneratorModal
+        isOpen={isQrModalOpen}
+        onClose={() => {
+          setIsQrModalOpen(false);
+          setSelectedQrLocation('');
+        }}
+        initialLocation={selectedQrLocation}
+        availableLocations={Array.from(new Set(complaints.map((c) => c.location).filter(Boolean)))}
+      />
     </div>
   );
 };

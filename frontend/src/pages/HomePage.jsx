@@ -1,10 +1,18 @@
 import React from 'react';
 import { Building2, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export const HomePage = () => {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+
+  // If accessed via QR code with location query params (?location=..., ?loc=...),
+  // immediately redirect to the student complaint portal with location prefilled.
+  const locationParam = searchParams.get('location') || searchParams.get('loc') || searchParams.get('place') || searchParams.get('zone');
+  if (locationParam) {
+    return <Navigate to={`/student?${searchParams.toString()}`} replace />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-between">
@@ -19,27 +27,6 @@ export const HomePage = () => {
               <span className="font-bold text-lg tracking-tight text-white">Smart Campus</span>
             </div>
           </div>
-
-          <div className="flex items-center gap-3">
-            <Link
-              to="/student"
-              className="rounded-xl bg-brand-600 hover:bg-brand-500 px-4 py-2 text-xs font-bold text-white shadow-sm transition-all"
-            >
-              Start Complaint
-            </Link>
-            <Link
-              to="/track"
-              className="rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-800 px-4 py-2 text-xs font-bold text-slate-200 transition-all"
-            >
-              Track Complaint
-            </Link>
-            <Link
-              to="/login"
-              className="rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-800 px-4 py-2 text-xs font-bold text-slate-200 transition-all"
-            >
-              Staff Login
-            </Link>
-          </div>
         </div>
       </header>
 
@@ -52,6 +39,7 @@ export const HomePage = () => {
           </span>
         </h1>
         <p className="mt-6 text-base sm:text-lg text-slate-400 leading-relaxed max-w-2xl mx-auto">
+          Report facility issues instantly via QR or form, track maintenance progress in real time, or log in to manage campus operations.
         </p>
 
         {/* Primary Action Buttons */}

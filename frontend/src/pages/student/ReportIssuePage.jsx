@@ -66,14 +66,16 @@ export const ReportIssuePage = () => {
   useEffect(() => {
     const qrLocation = searchParams.get('location') || searchParams.get('loc') || searchParams.get('place') || searchParams.get('zone');
     if (qrLocation && qrLocation.trim()) {
+      let resolvedLoc = qrLocation.trim();
       try {
-        const decoded = decodeURIComponent(qrLocation.trim());
-        setLocation(decoded);
-        setLocationFromQR(true);
+        if (resolvedLoc.includes('%')) {
+          resolvedLoc = decodeURIComponent(resolvedLoc);
+        }
       } catch (e) {
-        setLocation(qrLocation.trim());
-        setLocationFromQR(true);
+        // Fall back to original trimmed string
       }
+      setLocation(resolvedLoc);
+      setLocationFromQR(true);
     }
   }, [searchParams]);
 
