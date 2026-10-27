@@ -23,6 +23,7 @@ class ProviderWorkloadItem(BaseModel):
     active_jobs: int
     completed_jobs: int
     rating: float
+    reviews_count: Optional[int] = 0
 
 class PrincipalAnalyticsOut(BaseModel):
     total_complaints: int
@@ -35,6 +36,9 @@ class PrincipalAnalyticsOut(BaseModel):
     volume_trends: List[TrendItem]
     provider_workloads: List[ProviderWorkloadItem]
     recent_complaints: List[Dict[str, Any]]
+    avg_student_rating: Optional[float] = 0.0
+    total_reviews: Optional[int] = 0
+    recent_reviews: Optional[List[Dict[str, Any]]] = []
 
 class AuthorityStatsOut(BaseModel):
     new_complaints: int

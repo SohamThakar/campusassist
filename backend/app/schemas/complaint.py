@@ -3,6 +3,7 @@ from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
 from app.models.complaint import ComplaintCategory, ComplaintPriority, ComplaintStatus
 from app.schemas.technician import TechnicianOut
+from app.schemas.review import ReviewOut
 
 class AIAnalysisOut(BaseModel):
     id: int
@@ -119,6 +120,7 @@ class ComplaintOut(ComplaintSimpleOut):
     master_issue: Optional[MasterIssueBriefOut] = None
     history: List[StatusHistoryOut] = []
     assignments: List[AssignmentBriefOut] = []
+    review: Optional[ReviewOut] = None
 
     class Config:
         from_attributes = True

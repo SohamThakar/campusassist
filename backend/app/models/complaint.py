@@ -64,3 +64,4 @@ class Complaint(Base):
     ai_analysis = relationship("AIAnalysis", back_populates="complaint", uselist=False, lazy="selectin", cascade="all, delete-orphan")
     assignments = relationship("Assignment", back_populates="complaint", lazy="selectin", cascade="all, delete-orphan")
     history = relationship("StatusHistory", back_populates="complaint", lazy="selectin", cascade="all, delete-orphan", order_by="desc(StatusHistory.timestamp)")
+    review = relationship("Review", back_populates="complaint", uselist=False, lazy="selectin", cascade="all, delete-orphan")

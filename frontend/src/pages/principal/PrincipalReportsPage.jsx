@@ -340,13 +340,14 @@ export const PrincipalReportsPage = () => {
                         <th className="py-2.5 px-4">Location</th>
                         <th className="py-2.5 px-4">Date</th>
                         <th className="py-2.5 px-4">Evidence</th>
+                        <th className="py-2.5 px-4">Student Rating</th>
                         <th className="py-2.5 px-4 text-right">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-700">
                       {(!data?.complaints || data.complaints.length === 0) ? (
                         <tr>
-                          <td colSpan={6} className="py-8 text-center text-slate-400 text-xs">
+                          <td colSpan={7} className="py-8 text-center text-slate-400 text-xs">
                             No complaints match the selected filters.
                           </td>
                         </tr>
@@ -362,6 +363,20 @@ export const PrincipalReportsPage = () => {
                                 <span className="flex items-center gap-0.5 text-[9px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-full w-fit">
                                   <Video className="h-2.5 w-2.5" /> Video
                                 </span>
+                              ) : (
+                                <span className="text-[10px] text-slate-300">—</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              {c.rating ? (
+                                <div className="flex flex-col">
+                                  <span className="font-bold text-amber-500 text-xs">★ {c.rating}.0</span>
+                                  {c.review_comment && (
+                                    <span className="text-[10px] text-slate-500 truncate max-w-[120px]" title={c.review_comment}>
+                                      "{c.review_comment}"
+                                    </span>
+                                  )}
+                                </div>
                               ) : (
                                 <span className="text-[10px] text-slate-300">—</span>
                               )}

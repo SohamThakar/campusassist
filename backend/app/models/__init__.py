@@ -6,6 +6,7 @@ from app.models.assignment import Assignment, AssignmentStatus
 from app.models.status_history import StatusHistory
 from app.models.notification import Notification
 from app.models.master_issue import MasterIssue
+from app.models.review import Review
 
 __all__ = [
     "User",
@@ -22,4 +23,5 @@ __all__ = [
     "StatusHistory",
     "Notification",
     "MasterIssue",
+    "Review",
 ]

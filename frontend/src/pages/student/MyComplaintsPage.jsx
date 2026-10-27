@@ -12,7 +12,11 @@ import {
   Search,
   LogIn,
   Send,
-  Wrench
+  Wrench,
+  Star,
+  UserCheck,
+  Sparkles,
+  Check
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { complaintsAPI } from '../../api/endpoints';
@@ -41,12 +45,302 @@ const formatDateShort = (dateStr) => {
   });
 };
 
+const QUICK_FEEDBACK_TAGS = [
+  'Fixed quickly & on time',
+  'Polite & professional technician',
+  'High quality workmanship',
+  'Area cleaned after work',
+  'Issue completely solved'
+];
+
+const RATING_LABELS = {
+  1: { title: 'Poor', desc: 'Unsatisfactory work or unprofessional service' },
+  2: { title: 'Fair', desc: 'Service completed but needs noticeable improvement' },
+  3: { title: 'Good', desc: 'Issue resolved satisfactorily' },
+  4: { title: 'Very Good', desc: 'Prompt resolution and quality repair' },
+  5: { title: 'Excellent!', desc: 'Outstanding service and exceptional craftsmanship' },
+};
+
+/**
+ * ComplaintReviewSection Component
+ * Allows students to rate and review the technician/work once the job is completed.
+ * Displays submitted feedback and syncs directly with the Principal Dashboard.
+ */
+const ComplaintReviewSection = ({ complaint, onReviewSubmitted }) => {
+  const [rating, setRating] = useState(5);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+
+  // Extract technician info from assignments
+  const completedAssign = complaint.assignments?.find(
+    (a) => (a.status?.value || a.status)?.toLowerCase() === 'completed'
+  ) || complaint.assignments?.[complaint.assignments.length - 1];
+
+  const tech = completedAssign?.technician;
+  const techName = complaint.review?.technician_name || tech?.user?.name || tech?.business_name || 'Assigned Technician';
+  const techTrade = tech?.skills?.[0] || complaint.category || 'Maintenance Technician';
+
+  const existingReview = complaint.review;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!rating || rating < 1 || rating > 5) {
+      setError('Please select a rating between 1 and 5 stars.');
+      return;
+    }
+    setSubmitting(true);
+    setError('');
+
+    try {
+      const res = await complaintsAPI.submitReview(complaint.complaint_id, {
+        rating,
+        comment: comment.trim() || undefined,
+        technician_id: tech?.technician_id || undefined,
+      });
+
+      setSuccessMsg('Review recorded! Thank you for rating the worker.');
+      if (onReviewSubmitted) {
+        onReviewSubmitted(res.data);
+      }
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.detail || 'Failed to submit review. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleTagClick = (tag) => {
+    setComment((prev) => {
+      if (!prev) return tag;
+      if (prev.includes(tag)) return prev;
+      return `${prev}. ${tag}`;
+    });
+  };
+
+  if (existingReview) {
+    return (
+      <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50/70 via-white to-emerald-50/30 p-4 shadow-sm animate-in fade-in duration-200">
+        <div className="flex items-center justify-between border-b border-emerald-100 pb-2.5 mb-3">
+          <div className="flex items-center gap-1.5">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-950">
+              Student Review Recorded
+            </h3>
+          </div>
+          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 flex items-center gap-1">
+            <Check className="h-3 w-3 stroke-[3]" /> Rated
+          </span>
+        </div>
+
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Star
+                  key={star}
+                  className={`h-4 w-4 ${
+                    star <= existingReview.rating
+                      ? 'text-amber-400 fill-amber-400'
+                      : 'text-slate-200'
+                  }`}
+                />
+              ))}
+              <span className="ml-1.5 text-xs font-black text-slate-800">
+                {existingReview.rating}.0 / 5.0
+              </span>
+            </div>
+            <span className="text-[10px] text-slate-400">
+              {formatDateShort(existingReview.created_at)}
+            </span>
+          </div>
+
+          <div className="rounded-xl border border-slate-100 bg-white p-2.5 flex items-center justify-between shadow-xs">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-50 text-[#0f6fb0]">
+                <UserCheck className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-slate-800">{techName}</p>
+                <p className="text-[10px] text-slate-400">{techTrade}</p>
+              </div>
+            </div>
+            <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
+              Work Verified
+            </span>
+          </div>
+
+          {existingReview.comment && (
+            <div className="rounded-xl bg-slate-50/90 border border-slate-100 p-2.5">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
+                Your Feedback
+              </span>
+              <p className="text-xs text-slate-700 italic leading-relaxed">
+                "{existingReview.comment}"
+              </p>
+            </div>
+          )}
+
+          <div className="flex items-center justify-center gap-1.5 pt-1 text-[10px] text-emerald-700 font-medium">
+            <Sparkles className="h-3 w-3 text-emerald-600" />
+            <span>Rating synced to Principal Executive Dashboard</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-amber-200/90 bg-gradient-to-br from-amber-50/50 via-white to-sky-50/40 p-4 shadow-sm animate-in fade-in duration-200">
+      <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
+        <div className="flex items-center gap-1.5">
+          <Sparkles className="h-4 w-4 text-amber-500" />
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+            Rate Worker & Service
+          </h3>
+        </div>
+        <span className="text-[10px] font-bold text-[#0f6fb0] bg-sky-50 px-2 py-0.5 rounded-full">
+          Job Done
+        </span>
+      </div>
+
+      <p className="text-xs text-slate-600 mb-3 leading-relaxed">
+        This maintenance ticket has been marked completed. Please share your rating and review about the worker to help the Principal monitor service quality.
+      </p>
+
+      {/* Technician Badge */}
+      <div className="rounded-xl border border-slate-200 bg-white p-2.5 mb-3 flex items-center justify-between shadow-xs">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100 text-[#0f6fb0]">
+            <UserCheck className="h-4 w-4" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-slate-900">{techName}</p>
+            <p className="text-[10px] text-slate-400">{techTrade}</p>
+          </div>
+        </div>
+        <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+          Assigned Worker
+        </span>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-3">
+        {/* Star Rating Selector */}
+        <div>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+            Your Rating<span className="text-rose-500">*</span>
+          </span>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((star) => {
+                const activeStar = (hoverRating || rating) >= star;
+                return (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setRating(star)}
+                    onMouseEnter={() => setHoverRating(star)}
+                    onMouseLeave={() => setHoverRating(0)}
+                    className="p-1 text-slate-300 hover:scale-110 active:scale-95 transition-all focus:outline-none"
+                    aria-label={`Rate ${star} star`}
+                  >
+                    <Star
+                      className={`h-6 w-6 transition-colors ${
+                        activeStar
+                          ? 'text-amber-400 fill-amber-400'
+                          : 'text-slate-200 hover:text-amber-200'
+                      }`}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+            <span className="text-xs font-bold text-slate-700 ml-1">
+              {RATING_LABELS[hoverRating || rating]?.title}
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-400 mt-0.5">
+            {RATING_LABELS[hoverRating || rating]?.desc}
+          </p>
+        </div>
+
+        {/* Quick Tag Recommendations */}
+        <div>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+            Quick Feedback Suggestions
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {QUICK_FEEDBACK_TAGS.map((tag, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleTagClick(tag)}
+                className="text-[10px] font-medium rounded-lg border border-slate-200 bg-white px-2 py-1 text-slate-600 hover:border-[#0f6fb0] hover:text-[#0f6fb0] hover:bg-sky-50 active:scale-95 transition-all"
+              >
+                + {tag}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Review Comment Textarea */}
+        <div>
+          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+            Review Worker & Work Done (Optional)
+          </label>
+          <textarea
+            rows={2}
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Share details about punctuality, cleanliness, repair quality, or behavior..."
+            className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:border-[#0f6fb0] focus:outline-none focus:ring-1 focus:ring-[#0f6fb0]"
+          />
+        </div>
+
+        {error && (
+          <div className="flex items-center gap-1.5 rounded-lg bg-rose-50 border border-rose-200 p-2 text-[11px] text-rose-700">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {successMsg && (
+          <div className="flex items-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-200 p-2 text-[11px] text-emerald-700">
+            <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+            <span>{successMsg}</span>
+          </div>
+        )}
+
+        {/* Submit Review Button */}
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#0f6fb0] hover:bg-[#0c598d] active:scale-[0.99] text-xs font-bold text-white shadow-sm transition-all disabled:opacity-50"
+        >
+          {submitting ? (
+            <div className="flex items-center gap-1.5">
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              <span>Submitting Rating...</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <Star className="h-3.5 w-3.5 fill-white" />
+              <span>Submit Rating & Review</span>
+            </div>
+          )}
+        </button>
+      </form>
+    </div>
+  );
+};
+
 /**
  * ComplaintTimelineCard Component
- * Displays live progress, details, and milestone history for the tracked complaint.
- * NOTE: Attached Evidence (photo/video) is omitted from student view per requirements.
  */
-const ComplaintTimelineCard = ({ complaint, onTrackAnother }) => {
+const ComplaintTimelineCard = ({ complaint, onTrackAnother, onReviewUpdated }) => {
   if (!complaint) return null;
 
   const rawStatus = typeof complaint.status === 'string' ? complaint.status : complaint.status?.value || 'submitted';
@@ -272,6 +566,18 @@ const ComplaintTimelineCard = ({ complaint, onTrackAnother }) => {
 
 
 
+      {/* Student Rating & Review Section (Shown once ticket is Completed) */}
+      {statusLower === 'completed' && (
+        <ComplaintReviewSection
+          complaint={complaint}
+          onReviewSubmitted={(newReview) => {
+            if (onReviewUpdated) {
+              onReviewUpdated(newReview);
+            }
+          }}
+        />
+      )}
+
       {/* Action to track another complaint */}
       <button
         onClick={onTrackAnother}
@@ -410,6 +716,9 @@ export const MyComplaintsPage = () => {
             /* Render Tracked Complaint Timeline */
             <ComplaintTimelineCard
               complaint={trackedComplaint}
+              onReviewUpdated={(newReview) => {
+                setTrackedComplaint((prev) => prev ? { ...prev, review: newReview } : prev);
+              }}
               onTrackAnother={() => {
                 setTrackedComplaint(null);
                 setSearchInput('');

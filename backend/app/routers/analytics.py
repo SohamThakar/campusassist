@@ -2,7 +2,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, desc
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
@@ -11,6 +11,7 @@ from app.models.complaint import Complaint, ComplaintStatus
 from app.models.technician import Technician, TechnicianStatus
 from app.models.assignment import Assignment, AssignmentStatus
 from app.models.status_history import StatusHistory
+from app.models.review import Review
 from app.schemas.analytics import PrincipalAnalyticsOut, AuthorityStatsOut
 from app.auth.dependencies import require_roles
 
@@ -38,7 +39,7 @@ async def get_principal_analytics(
     Calculates genuine operational metrics from active database records.
     """
     # 1. Overall counts
-    all_complaints_res = await db.execute(select(Complaint))
+    all_complaints_res = await db.execute(select(Complaint).options(selectinload(Complaint.review)))
     complaints = all_complaints_res.scalars().all()
 
     total_count = len(complaints)
@@ -90,7 +91,34 @@ async def get_principal_analytics(
     if total_count == 0:
         volume_trends = []
 
-    # 5. Provider Workload (Dynamic)
+    # 4b. Fetch Student Reviews & Calculate Satisfaction
+    all_reviews_res = await db.execute(
+        select(Review)
+        .options(
+            selectinload(Review.technician).selectinload(Technician.user),
+            selectinload(Review.complaint)
+        )
+        .order_by(desc(Review.created_at))
+    )
+    all_reviews = all_reviews_res.scalars().all()
+    avg_student_rating = round(sum(r.rating for r in all_reviews) / len(all_reviews), 1) if all_reviews else 0.0
+    total_reviews = len(all_reviews)
+
+    recent_reviews = [
+        {
+            "id": r.id,
+            "complaint_id": r.complaint_id,
+            "category": r.complaint.category if r.complaint else "General",
+            "location": r.complaint.location if r.complaint else "Campus",
+            "technician_name": (r.technician.user.name if r.technician and r.technician.user else (r.technician.business_name if r.technician else "Assigned Worker")),
+            "rating": r.rating,
+            "comment": r.comment or "Satisfied with completed work.",
+            "created_at": r.created_at.strftime("%b %d, %Y %H:%M") if r.created_at else ""
+        }
+        for r in all_reviews[:12]
+    ]
+
+    # 5. Provider Workload & Review Ratings (Dynamic)
     provider_workloads = []
     for t in techs:
         name = t.user.name if t.user else (t.business_name or "Technician")
@@ -99,13 +127,15 @@ async def get_principal_analytics(
         assign_res = await db.execute(select(Assignment).where(Assignment.technician_id == t.technician_id))
         tech_assignments = assign_res.scalars().all()
         completed_tech_jobs = sum(1 for a in tech_assignments if a.status == AssignmentStatus.COMPLETED)
+        tech_review_count = sum(1 for r in all_reviews if r.technician_id == t.technician_id)
         
         provider_workloads.append({
             "technician_name": name,
             "trade": trade,
             "active_jobs": t.current_workload or 0,
             "completed_jobs": completed_tech_jobs,
-            "rating": t.rating or 5.0
+            "rating": t.rating or 5.0,
+            "reviews_count": tech_review_count
         })
 
     # 6. Average resolution time calculation
@@ -150,7 +180,10 @@ async def get_principal_analytics(
         "category_breakdown": category_breakdown,
         "volume_trends": volume_trends,
         "provider_workloads": provider_workloads,
-        "recent_complaints": recent_complaints
+        "recent_complaints": recent_complaints,
+        "avg_student_rating": avg_student_rating,
+        "total_reviews": total_reviews,
+        "recent_reviews": recent_reviews
     }
 
 @router.get("/authority-stats", response_model=AuthorityStatsOut)
@@ -234,7 +267,7 @@ async def get_principal_reports(
     from datetime import date
 
     # Fetch all complaints
-    all_complaints_res = await db.execute(select(Complaint))
+    all_complaints_res = await db.execute(select(Complaint).options(selectinload(Complaint.review)))
     all_complaints = all_complaints_res.scalars().all()
 
     # Apply date filters
@@ -339,6 +372,8 @@ async def get_principal_reports(
             "status": c.status.value if hasattr(c.status, "value") else str(c.status),
             "created_at": c.created_at.strftime("%b %d, %Y %H:%M"),
             "has_video": bool(c.video_url) if hasattr(c, 'video_url') else False,
+            "rating": c.review.rating if getattr(c, "review", None) else None,
+            "review_comment": c.review.comment if getattr(c, "review", None) else None,
         }
         for c in filtered[:50]
     ]

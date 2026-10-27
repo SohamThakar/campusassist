@@ -18,6 +18,8 @@ from app.models.technician import Technician
 from app.models.assignment import Assignment, AssignmentStatus
 from app.models.status_history import StatusHistory
 from app.models.ai_analysis import AIAnalysis
+from app.models.review import Review
+from app.schemas.review import ReviewCreate, ReviewOut
 from app.schemas.complaint import (
     ComplaintCreate,
     ComplaintOut,
@@ -256,7 +258,8 @@ async def get_my_complaint_detail(
             selectinload(Complaint.history).selectinload(StatusHistory.user),
             selectinload(Complaint.assignments).selectinload(Assignment.technician).selectinload(Technician.user),
             selectinload(Complaint.ai_analysis),
-            selectinload(Complaint.master_issue).selectinload(MasterIssue.complaints)
+            selectinload(Complaint.master_issue).selectinload(MasterIssue.complaints),
+            selectinload(Complaint.review).selectinload(Review.technician).selectinload(Technician.user),
         )
     )
     complaint = result.scalars().first()
@@ -267,6 +270,10 @@ async def get_my_complaint_detail(
     # Enforce ownership: student can only see their own complaint
     if complaint.user_id != current_user.user_id:
         raise HTTPException(status_code=403, detail="You are not authorized to view this complaint.")
+
+    if complaint.review and complaint.review.technician:
+        tech = complaint.review.technician
+        complaint.review.technician_name = tech.user.name if tech.user else tech.business_name
 
     return complaint
 
@@ -375,7 +382,8 @@ async def get_complaint_by_id(complaint_id: str, db: AsyncSession = Depends(get_
             selectinload(Complaint.history).selectinload(StatusHistory.user),
             selectinload(Complaint.assignments).selectinload(Assignment.technician).selectinload(Technician.user),
             selectinload(Complaint.ai_analysis),
-            selectinload(Complaint.master_issue).selectinload(MasterIssue.complaints)
+            selectinload(Complaint.master_issue).selectinload(MasterIssue.complaints),
+            selectinload(Complaint.review).selectinload(Review.technician).selectinload(Technician.user),
         )
     )
     complaint = result.scalars().first()
@@ -385,6 +393,10 @@ async def get_complaint_by_id(complaint_id: str, db: AsyncSession = Depends(get_
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Maintenance request with ID '{complaint_id}' not found."
         )
+
+    if complaint.review and complaint.review.technician:
+        tech = complaint.review.technician
+        complaint.review.technician_name = tech.user.name if tech.user else tech.business_name
 
     return complaint
 
@@ -438,10 +450,15 @@ async def get_complaint_full(db: AsyncSession, complaint_id: str) -> Optional[Co
             selectinload(Complaint.history).selectinload(StatusHistory.user),
             selectinload(Complaint.assignments).selectinload(Assignment.technician).selectinload(Technician.user),
             selectinload(Complaint.ai_analysis),
-            selectinload(Complaint.master_issue)
+            selectinload(Complaint.master_issue),
+            selectinload(Complaint.review).selectinload(Review.technician).selectinload(Technician.user),
         )
     )
-    return res.scalars().first()
+    complaint = res.scalars().first()
+    if complaint and complaint.review and complaint.review.technician:
+        tech = complaint.review.technician
+        complaint.review.technician_name = tech.user.name if tech.user else tech.business_name
+    return complaint
 
 @router.post("/{complaint_id}/approve", response_model=ComplaintOut)
 async def approve_complaint(
@@ -697,3 +714,162 @@ async def delete_all_complaints(
         "deleted_count": count,
         "deleted_ids": complaint_ids
     }
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# STUDENT WORKER RATING & REVIEW ENDPOINTS
+# ──────────────────────────────────────────────────────────────────────────────
+
+@router.post("/{complaint_id}/review", response_model=ReviewOut)
+async def submit_complaint_review(
+    complaint_id: str,
+    review_in: ReviewCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Submit star rating (1-5) and review feedback for a completed maintenance ticket.
+    Updates technician average rating and reflects dynamically on Principal Dashboard.
+    """
+    clean_id = complaint_id.strip()
+    raw_id = clean_id.lstrip("#")
+    hash_id = f"#{raw_id}"
+
+    result = await db.execute(
+        select(Complaint)
+        .where(
+            (Complaint.complaint_id == clean_id) |
+            (Complaint.complaint_id == hash_id) |
+            (Complaint.complaint_id == raw_id) |
+            (Complaint.complaint_id.ilike(hash_id)) |
+            (Complaint.complaint_id.ilike(raw_id))
+        )
+        .options(
+            selectinload(Complaint.assignments).selectinload(Assignment.technician).selectinload(Technician.user),
+            selectinload(Complaint.review)
+        )
+    )
+    complaint = result.scalars().first()
+    if not complaint:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Maintenance request '{complaint_id}' not found."
+        )
+
+    # Check status is completed
+    raw_status = complaint.status.value if hasattr(complaint.status, "value") else str(complaint.status)
+    if raw_status.lower() != "completed":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reviews can only be submitted once the maintenance work has been marked completed."
+        )
+
+    # Check if already reviewed
+    if complaint.review:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A review has already been submitted for this maintenance request."
+        )
+
+    # Determine assigned technician
+    tech_id = review_in.technician_id
+    tech = None
+    if not tech_id and complaint.assignments:
+        completed_assign = next(
+            (a for a in complaint.assignments if (a.status.value if hasattr(a.status, 'value') else str(a.status)).lower() == "completed"),
+            None
+        )
+        target_assign = completed_assign or complaint.assignments[-1]
+        tech_id = target_assign.technician_id
+        tech = target_assign.technician
+    elif tech_id:
+        tech_res = await db.execute(
+            select(Technician).where(Technician.technician_id == tech_id).options(selectinload(Technician.user))
+        )
+        tech = tech_res.scalars().first()
+
+    review = Review(
+        complaint_id=complaint.complaint_id,
+        technician_id=tech_id,
+        rating=review_in.rating,
+        comment=review_in.comment.strip() if review_in.comment else None,
+        created_at=datetime.utcnow()
+    )
+    db.add(review)
+
+    tech_name = tech.user.name if (tech and tech.user) else (tech.business_name if tech else "Worker")
+    history = StatusHistory(
+        complaint_id=complaint.complaint_id,
+        status="Reviewed",
+        notes=f"Student rated {review_in.rating}★ for {tech_name}. Feedback: {review_in.comment or 'Satisfied with resolution'}",
+        timestamp=datetime.utcnow(),
+    )
+    db.add(history)
+
+    await db.flush()
+
+    # Dynamically recalculate and update technician aggregate rating
+    if tech_id:
+        from sqlalchemy import func
+        reviews_res = await db.execute(
+            select(func.avg(Review.rating), func.count(Review.id))
+            .where(Review.technician_id == tech_id)
+        )
+        avg_r, cnt_r = reviews_res.first()
+        if avg_r is not None:
+            if not tech:
+                tech_res = await db.execute(select(Technician).where(Technician.technician_id == tech_id))
+                tech = tech_res.scalars().first()
+            if tech:
+                tech.rating = round(float(avg_r), 1)
+
+    await db.commit()
+    await db.refresh(review)
+
+    return ReviewOut(
+        id=review.id,
+        complaint_id=review.complaint_id,
+        technician_id=review.technician_id,
+        rating=review.rating,
+        comment=review.comment,
+        created_at=review.created_at,
+        technician_name=tech_name if tech_id else None
+    )
+
+@router.get("/{complaint_id}/review", response_model=ReviewOut)
+async def get_complaint_review(complaint_id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Get student review and rating for a specific complaint if one has been submitted.
+    """
+    clean_id = complaint_id.strip()
+    raw_id = clean_id.lstrip("#")
+    hash_id = f"#{raw_id}"
+
+    result = await db.execute(
+        select(Review)
+        .where(
+            (Review.complaint_id == clean_id) |
+            (Review.complaint_id == hash_id) |
+            (Review.complaint_id == raw_id)
+        )
+        .options(selectinload(Review.technician).selectinload(Technician.user))
+    )
+    review = result.scalars().first()
+    if not review:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No review found for this complaint."
+        )
+
+    tech_name = None
+    if review.technician:
+        tech_name = review.technician.user.name if review.technician.user else review.technician.business_name
+
+    return ReviewOut(
+        id=review.id,
+        complaint_id=review.complaint_id,
+        technician_id=review.technician_id,
+        rating=review.rating,
+        comment=review.comment,
+        created_at=review.created_at,
+        technician_name=tech_name
+    )

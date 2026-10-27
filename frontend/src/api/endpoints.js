@@ -22,6 +22,9 @@ export const complaintsAPI = {
   dismissDuplicate: (id) => api.post(`/complaints/${encodeURIComponent(id)}/dismiss-duplicate`),
   listMasterIssues: () => api.get('/complaints/master-issues'),
   getMasterIssue: (id) => api.get(`/complaints/master-issues/${encodeURIComponent(id)}`),
+  // Student rating & review
+  submitReview: (id, data) => api.post(`/complaints/${encodeURIComponent(id)}/review`, data),
+  getReview: (id) => api.get(`/complaints/${encodeURIComponent(id)}/review`),
   // Bulk delete by status: 'submitted' | 'approved' | 'rejected' | 'completed' | 'pending' | 'all'
   deleteAll: (statusFilter = 'pending') => api.delete('/complaints/all/clear', { params: { status_filter: statusFilter } }),
 };

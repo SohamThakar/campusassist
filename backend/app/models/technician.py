@@ -29,3 +29,4 @@ class Technician(Base):
     user = relationship("User", back_populates="technician_profile", lazy="selectin")
     assignments = relationship("Assignment", back_populates="technician", lazy="selectin")
     recommendations = relationship("AIAnalysis", back_populates="recommended_technician", lazy="selectin")
+    reviews = relationship("Review", back_populates="technician", lazy="selectin")
