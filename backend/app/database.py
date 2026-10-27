@@ -1,31 +1,56 @@
+
 import os
 from typing import AsyncGenerator
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+
+from sqlalchemy.ext.asyncio import (
+    create_async_engine,
+    async_sessionmaker,
+    AsyncSession,
+)
 from sqlalchemy.orm import declarative_base
 from app.config import settings
 
-# Determine database engine parameters
-connect_args = {}
+
+# Normalize the database URL for SQLAlchemy's async engine
+DATABASE_URL = settings.DATABASE_URL
+
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is not configured")
+
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace(
+        "postgres://", "postgresql+asyncpg://", 1
+    )
+elif DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace(
+        "postgresql://", "postgresql+asyncpg://", 1
+    )
+
+
+# Configure database engine
 engine_kwargs = {
     "echo": False,
     "future": True,
 }
 
-if "sqlite" in settings.DATABASE_URL:
-    connect_args = {"check_same_thread": False}
-    engine_kwargs["connect_args"] = connect_args
+if DATABASE_URL.startswith("sqlite"):
+    engine_kwargs["connect_args"] = {
+        "check_same_thread": False
+    }
 else:
-    # Production PostgreSQL connection pool settings
+    # PostgreSQL connection pool settings
     engine_kwargs.update({
         "pool_pre_ping": True,
         "pool_size": 10,
         "max_overflow": 20,
     })
 
+
 engine = create_async_engine(
-    settings.DATABASE_URL,
-    **engine_kwargs
+    DATABASE_URL,
+    **engine_kwargs,
 )
+
 
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
@@ -35,7 +60,9 @@ AsyncSessionLocal = async_sessionmaker(
     autoflush=False,
 )
 
+
 Base = declarative_base()
+
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
@@ -44,12 +71,20 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         finally:
             await session.close()
 
+
 async def init_db():
     """
-    Local development helper for zero-config SQLite.
-    In production (PostgreSQL), schema migrations are strictly managed via Alembic ('alembic upgrade head').
+    Local development helper for SQLite.
+
+    In production, schema migrations are managed by Alembic:
+    alembic upgrade head
     """
-    if "sqlite" in settings.DATABASE_URL and getattr(settings, "ENVIRONMENT", "").lower() != "production":
-        import app.models  # Registers all SQLAlchemy models to Base.metadata
+    if (
+        DATABASE_URL.startswith("sqlite")
+        and getattr(settings, "ENVIRONMENT", "").lower()
+        != "production"
+    ):
+        import app.models
+
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
